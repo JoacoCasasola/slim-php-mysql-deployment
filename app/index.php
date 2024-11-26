@@ -1,47 +1,36 @@
 <?php
-// Error Handling
-error_reporting(-1);
-ini_set('display_errors', 1);
-
-use Psr\Http\Message\ResponseInterface as Response;
-use Psr\Http\Message\ServerRequestInterface as Request;
-use Psr\Http\Server\RequestHandlerInterface;
 use Slim\Factory\AppFactory;
 use Slim\Routing\RouteCollectorProxy;
-use Slim\Routing\RouteContext;
+use Slim\Psr7\Request;
+use Slim\Psr7\Response;
 
-require __DIR__ . '/../vendor/autoload.php';
+require '../vendor/autoload.php';
+use Dotenv\Dotenv;
+use Middleware\ClienteMiddleware;
+use Middleware\EmpleadoMiddleware;
+use Middleware\SocioMiddleware;
 
-require_once './db/AccesoDatos.php';
-// require_once './middlewares/Logger.php';
+require "./controllers/TiendaController.php";
+require "./controllers/VentaController.php";
 
-require_once './controllers/UsuarioController.php';
+$dotenv = Dotenv::createImmutable(__DIR__);
+$dotenv->load();
 
-// Load ENV
-$dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
-$dotenv->safeLoad();
-
-// Instantiate App
 $app = AppFactory::create();
 
-// Add error middleware
-$app->addErrorMiddleware(true, true, true);
+$app->post('/tienda/alta', \TiendaController::class . ':CargarUno');
+$app->post('/tienda/consultar', \TiendaController::class . ':VerificarExiste');
+$app->post('/ventas/alta', \VentaController::class . ':CargarUno');
 
-// Add parse body
-$app->addBodyParsingMiddleware();
-
-// Routes
-$app->group('/usuarios', function (RouteCollectorProxy $group) {
-    $group->get('[/]', \UsuarioController::class . ':TraerTodos');
-    $group->get('/{usuario}', \UsuarioController::class . ':TraerUno');
-    $group->post('[/]', \UsuarioController::class . ':CargarUno');
-  });
-
-$app->get('[/]', function (Request $request, Response $response) {    
-    $payload = json_encode(array("mensaje" => "Slim Framework 4 PHP"));
-    
-    $response->getBody()->write($payload);
-    return $response->withHeader('Content-Type', 'application/json');
+$app->group('/ventas/consultar', function (RouteCollectorProxy $group) {
+    $group->get('/productos/vendidos', \VentaController::class . ':vendidosEnUnDia');
+    $group->get('/productos/entreValores', \VentaController::class . ':obtenerVentasEntreValores');
+    $group->get('/productos/masVendido', \VentaController::class . ':obtenerProductoMasVendido');
+    $group->get('/ventas/porUsuario', \VentaController::class . ':obtenerVentasPorUsuario');
+    $group->get('/ventas/porProducto', \VentaController::class . ':obtenerVentasPorProducto');
+    $group->get('/ventas/ingresos', \VentaController::class . ':obtenerIngresos');
 });
+
+$app->put('/ventas/modificar', \VentaController::class . ':ModificarUno');
 
 $app->run();
